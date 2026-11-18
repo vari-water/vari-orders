@@ -387,26 +387,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   </div>
 
   <section id="poWrap" hidden>
-    <div class="notebox" id="poRead" style="margin:0">
-      <div class="notehead"><h2>ອ່ານໃບ PO</h2></div>
-      <div class="meta" style="color:var(--muted);font-size:.85rem">ຖ່າຍຮູບ ຫຼືແຄັບໜ້າຈໍໃບ PO ແລ້ວເລືອກໄຟລ໌ (JPG / PNG / WebP) ຫຼືວາງຂໍ້ຄວາມຈາກ PO. ລະບົບອ່ານຊື່ ແລະລາຍການ ແລ້ວແນະນຳລະຫັດລູກຄ້າໃຫ້ເລືອກ. ຖ້າອ່ານບໍ່ໄດ້ ພິມຊື່ໃນ PO ເອງໄດ້.</div>
-      <input id="poFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
-      <textarea id="poText" rows="2" placeholder="ຫຼືວາງຂໍ້ຄວາມຈາກ PO ບ່ອນນີ້" style="min-height:56px"></textarea>
-      <div class="foot"><span class="msg" id="poMsg" role="status"></span><button type="button" class="btn primary" id="poGo">ອ່ານ PO</button></div>
-      <div style="display:grid;gap:10px;border-top:1px dashed var(--line);padding-top:12px">
-        <label for="poName">ຊື່ໃນ PO<input id="poName" type="text" placeholder="ຊື່ຮ້ານ / ສາຂາ ຕາມທີ່ຂຽນໃນ PO"></label>
-        <div id="poItems" class="meta" style="color:var(--muted);font-size:.85rem"></div>
-        <label for="poCode">ລະຫັດລູກຄ້າ<select id="poCode"></select></label>
-        <div class="foot"><span class="acts"><button type="button" class="btn" id="poLearn">ຈື່ຊື່ໃນ PO ນີ້ກັບລະຫັດທີ່ເລືອກ</button><button type="button" class="btn primary" id="poUse">ໃຊ້ຂໍ້ມູນນີ້ເຂົ້າຟອມ</button></span></div>
-      </div>
-    </div>
     <details class="notebox" id="codeBox" style="margin:0">
-      <summary id="codeSum" style="cursor:pointer;font-weight:700">ລະຫັດລູກຄ້າ / ຊື່ໃນ PO</summary>
-      <div class="meta" style="color:var(--muted);font-size:.85rem">ເພີ່ມຄູ່ “ລະຫັດ ↔ ຊື່ໃນ PO” ເອງ. ຊື່ໃນ PO ດຽວກັນຂຽນຕ່າງກັນໄດ້ ເພີ່ມຫຼາຍແຖວຕໍ່ລະຫັດດຽວກັນ.</div>
+      <summary id="codeSum" style="cursor:pointer;font-weight:700">ລະຫັດລູກຄ້າ</summary>
+      <div class="meta" style="color:var(--muted);font-size:.85rem">ເພີ່ມ “ລະຫັດລູກຄ້າ + ຊື່ລູກຄ້າ”. ເມື່ອພິມຊື່ລູກຄ້າໃນຟອມອໍເດີ ເວັບຈະຕື່ມລະຫັດໃຫ້ເອງ.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;align-items:end">
         <label for="kCode">ລະຫັດລູກຄ້າ<input id="kCode" type="text"></label>
-        <label for="kPo">ຊື່ໃນ PO<input id="kPo" type="text"></label>
-        <label for="kName">ຊື່ລູກຄ້າທີ່ເຮົາໃຊ້ (ບໍ່ບັງຄັບ)<input id="kName" type="text"></label>
+        <label for="kPo">ຊື່ລູກຄ້າ<input id="kPo" type="text"></label>
         <span class="acts"><button type="button" class="btn primary" id="kAdd">ເພີ່ມ</button><button type="button" class="btn" id="kCancel" hidden>ຍົກເລີກ</button></span>
       </div>
       <div class="msg" id="kMsg" role="status"></div>
@@ -982,49 +968,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   $("warnBar").onclick = function () { $("fs").value = $("fs").value === "short" ? "" : "short"; render(); };
 
   /* ---------- customer codes + PO reader (pack tab) ---------- */
-  var kcol = null, codes = [], codeEdit = null, sampleFn = null, poData = { items: [], code: "", address: "" };
+  var kcol = null, codes = [], codeEdit = null;
   function nrm(s) { return String(s || "").toLowerCase().replace(/[\s\-_.,()\/\\'"]+/g, ""); }
-  function scoreName(a, b) {
-    var x = nrm(a), y = nrm(b); if (!x || !y) return 0;
-    if (x === y) return 3;
-    if (x.indexOf(y) >= 0 || y.indexOf(x) >= 0) return 2;
-    var ta = String(a).toLowerCase().split(/[\s\-_.,()\/]+/).filter(function (t) { return t.length > 1; }),
-      tb = String(b).toLowerCase().split(/[\s\-_.,()\/]+/).filter(function (t) { return t.length > 1; });
-    return ta.filter(function (t) { return tb.indexOf(t) >= 0; }).length ? 1 : 0;
-  }
-  function recLabel(r) { return r.code + " — " + (r.poName || "") + (r.custName ? " (" + r.custName + ")" : ""); }
-  function rankCodes(name, code) {
-    return codes.map(function (r) {
-      var s = Math.max(scoreName(name, r.poName), scoreName(name, r.custName));
-      if (code && nrm(code) === nrm(r.code)) s = 4;
-      return { r: r, s: s };
-    }).sort(function (a, b) { return b.s - a.s || String(a.r.code).localeCompare(String(b.r.code)); });
-  }
-  function renderPoCodes(keep) {
-    var rk = rankCodes($("poName").value, poData.code), sel = $("poCode"), prev = keep ? sel.value : "";
-    sel.innerHTML = '<option value="">' + (codes.length ? "— ເລືອກລະຫັດ —" : "— ຍັງບໍ່ມີລະຫັດ ເພີ່ມໃນກ່ອງລຸ່ມກ່ອນ —") + "</option>" +
-      rk.map(function (x) { return '<option value="' + x.r.id + '">' + (x.s >= 2 ? "★ " : "") + esc(recLabel(x.r)) + "</option>"; }).join("");
-    sel.value = prev || (rk[0] && rk[0].s >= 2 ? rk[0].r.id : "");
-  }
   function renderCodes() {
     var q = nrm($("kQ").value);
     var rows = codes.filter(function (r) { return !q || nrm([r.code, r.poName, r.custName].join(" ")).indexOf(q) >= 0; })
       .sort(function (a, b) { return String(a.code).localeCompare(String(b.code)); });
-    $("codeSum").textContent = "ລະຫັດລູກຄ້າ / ຊື່ໃນ PO (" + codes.length + ")";
+    $("codeSum").textContent = "ລະຫັດລູກຄ້າ (" + codes.length + ")";
     $("codeList").innerHTML = rows.length ? rows.map(function (r) {
-      return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line)"><span><b>' + esc(r.code) + "</b> · " + esc(r.poName) +
-        (r.custName ? '<br><span style="color:var(--muted);font-size:.85rem">' + esc(r.custName) + "</span>" : "") + '</span><span class="acts">' +
+      return '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line)"><span><b>' + esc(r.code) + "</b> · " + esc(r.custName || r.poName) + '</span><span class="acts">' +
         '<button type="button" class="btn small" data-k="edit" data-id="' + r.id + '">ແກ້ໄຂ</button>' +
         '<button type="button" class="btn small" data-k="del" data-id="' + r.id + '">ລຶບ</button></span></div>';
     }).join("") : '<div class="meta" style="color:var(--muted)">ຍັງບໍ່ມີ</div>';
     var seen = {};
     $("codeDl").innerHTML = codes.filter(function (r) { if (seen[r.code]) return false; seen[r.code] = 1; return true; })
       .map(function (r) { return '<option value="' + esc(r.code).replace(/"/g, "&quot;") + '"></option>'; }).join("");
-    renderPoCodes(true);
   }
   function kmsg(t, c) { var m = $("kMsg"); m.textContent = t; m.className = "msg " + (c || ""); }
-  function pmsg(t, c) { var m = $("poMsg"); m.textContent = t; m.className = "msg " + (c || ""); }
-  function clearK() { codeEdit = null; $("kCode").value = ""; $("kPo").value = ""; $("kName").value = ""; $("kAdd").textContent = "ເພີ່ມ"; $("kCancel").hidden = true; }
+  function clearK() { codeEdit = null; $("kCode").value = ""; $("kPo").value = ""; $("kAdd").textContent = "ເພີ່ມ"; $("kCancel").hidden = true; }
   function dupCode(code, po, exceptId) {
     return codes.some(function (r) { return r.id !== exceptId && nrm(r.code) === nrm(code) && nrm(r.poName) === nrm(po); });
   }
@@ -1032,10 +993,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   $("kQ").addEventListener("input", renderCodes);
   $("kAdd").onclick = function () {
     if (!kcol) { kmsg("ຍັງເຊື່ອມຖານຂໍ້ມູນບໍ່ໄດ້ ກະລຸນາເປີດໜ້ານີ້ໃໝ່", "err"); return; }
-    var code = $("kCode").value.trim(), po = $("kPo").value.trim(), nm = $("kName").value.trim();
-    if (!code || !po) { kmsg("ກະລຸນາໃສ່ລະຫັດລູກຄ້າ ແລະຊື່ໃນ PO", "err"); return; }
+    var code = $("kCode").value.trim(), po = $("kPo").value.trim();
+    if (!code || !po) { kmsg("ກະລຸນາໃສ່ລະຫັດລູກຄ້າ ແລະຊື່ລູກຄ້າ", "err"); return; }
     if (dupCode(code, po, codeEdit)) { kmsg("ມີຄູ່ລະຫັດ + ຊື່ນີ້ແລ້ວ", "err"); return; }
-    var d = { code: code, poName: po, custName: nm }, ed = codeEdit, p;
+    var d = { code: code, poName: po, custName: po }, ed = codeEdit, p;
     if (ed) p = kcol.doc(ed).update(d); else { d.createdAt = new Date().toISOString(); p = kcol.add(d); }
     p.then(function () { clearK(); kmsg(ed ? "ແກ້ໄຂແລ້ວ" : "ເພີ່ມແລ້ວ", "ok"); })
       .catch(function (err) { kmsg("ບັນທຶກບໍ່ສຳເລັດ: " + (err && err.message || "ບໍ່ມີສິດຂຽນຂໍ້ມູນ"), "err"); });
@@ -1047,80 +1008,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
       kcol.doc(r.id).delete().catch(function (err) { kmsg("ລຶບບໍ່ສຳເລັດ: " + (err && err.message || ""), "err"); });
       return;
     }
-    codeEdit = r.id; $("kCode").value = r.code || ""; $("kPo").value = r.poName || ""; $("kName").value = r.custName || "";
+    codeEdit = r.id; $("kCode").value = r.code || ""; $("kPo").value = r.custName || r.poName || "";
     $("kAdd").textContent = "ບັນທຶກການແກ້ໄຂ"; $("kCancel").hidden = false; $("kCode").focus();
   });
-  $("poName").addEventListener("input", function () { renderPoCodes(false); });
-  $("poLearn").onclick = function () {
-    var nm = $("poName").value.trim(), rec = codes.filter(function (r) { return r.id === $("poCode").value; })[0];
-    if (!kcol) { pmsg("ຍັງເຊື່ອມຖານຂໍ້ມູນບໍ່ໄດ້", "err"); return; }
-    if (!nm || !rec) { pmsg("ໃສ່ຊື່ໃນ PO ແລະເລືອກລະຫັດກ່ອນ", "err"); return; }
-    if (dupCode(rec.code, nm, null)) { pmsg("ຊື່ນີ້ຖືກຈື່ກັບລະຫັດນີ້ແລ້ວ", "ok"); return; }
-    kcol.add({ code: rec.code, poName: nm, custName: rec.custName || "", createdAt: new Date().toISOString() })
-      .then(function () { pmsg("ຈື່ແລ້ວ ຄັ້ງຕໍ່ໄປຊື່ນີ້ຈະແນະນຳລະຫັດ " + rec.code, "ok"); })
-      .catch(function (err) { pmsg("ບັນທຶກບໍ່ສຳເລັດ: " + (err && err.message || "ບໍ່ມີສິດຂຽນຂໍ້ມູນ"), "err"); });
-  };
-  function showPoItems() {
-    $("poItems").textContent = poData.items.length ? "ລາຍການທີ່ອ່ານໄດ້: " + poData.items.map(function (i) { return i.p + " × " + i.q; }).join(" · ") : "";
-  }
-  function poPrompt() { return PO_PROMPT_A + (curType === "pack"
-    ? "250ມລ (250 ml), 600ມລ (600 ml), 2000ມລ (2 L / 2000 ml), ນ້ຳດ່າງ (alkaline), ມີນີຟ້າ, ມີນີບົວ"
-    : "500ມລ (500 ml), 300ມລ (300 ml)") + PO_PROMPT_B; }
-  var PO_PROMPT_A = "You read a purchase order (PO) sent by a customer of a bottled-water company in Laos. The PO is the attached image and/or the text below. " +
-    'Reply with only one JSON object: {"customerName": string, "code": string, "poNumber": string, "date": string, "address": string, "items": [{"name": string, "qty": number, "price": number}]}. ' +
-    "customerName = the buyer's store or branch name exactly as printed (not the supplier AE Vari). code = a customer or store code printed on the PO, else \"\". " +
-    'date = PO date as YYYY-MM-DD (convert Buddhist-era years to Gregorian), else "". qty = number of packs ordered. price = unit price in kip if printed, else 0. ' +
-    "For each item name, when it matches one of these use the value exactly: ";
-  var PO_PROMPT_B = '; otherwise write the name as printed. Never invent values; use "" or 0 when absent.\n\nPO text (may be empty):\n';
-  function poErr(c) {
-    return { not_granted: "ບໍ່ໄດ້ຮັບອະນຸຍາດໃຫ້ໃຊ້ Claude ອ່ານ PO", rate_limited: "ໃຊ້ຖີ່ເກີນໄປ ລໍຖ້າສັກຄູ່ແລ້ວລອງໃໝ່", image_rejected: "ໄຟລ໌ຮູບນີ້ໃຊ້ບໍ່ໄດ້ ລອງໄຟລ໌ອື່ນ",
-      invalid_json: "ອ່ານບໍ່ອອກ ລອງຮູບທີ່ຊັດກວ່າ ຫຼືວາງຂໍ້ຄວາມ", prompt_too_large: "ຂໍ້ຄວາມຍາວເກີນໄປ" }[c] || "ອ່ານບໍ່ສຳເລັດ ລອງໃໝ່ ຫຼືພິມຊື່ໃນ PO ເອງ";
-  }
-  $("poGo").onclick = function () {
-    var file = $("poFile").files[0], txt = $("poText").value.trim();
-    if (!file && !txt) { pmsg("ເລືອກຮູບ ຫຼືວາງຂໍ້ຄວາມຈາກ PO ກ່ອນ", "err"); return; }
-    if (!sampleFn) { pmsg(NO_AI + ". ຫຼືພິມຊື່ໃນ PO ດ້ານລຸ່ມເອງ", "err"); return; }
-    var btn = $("poGo");
-    function run(opts) {
-      btn.disabled = true; pmsg("ກຳລັງອ່ານ…", "");
-      sampleFn.json(poPrompt() + txt, opts).then(function (d) {
-        d = d || {};
-        poData = {
-          code: String(d.code || ""), po: String(d.poNumber || ""), date: String(d.date || ""), address: String(d.address || ""),
-          items: (Array.isArray(d.items) ? d.items : []).map(function (i) {
-            return { p: String(i && i.name || "").trim(), q: Number(i && i.qty) || 0, pr: Number(i && i.price) || 0 };
-          }).filter(function (i) { return i.p && i.q > 0; })
-        };
-        $("poName").value = String(d.customerName || ""); renderPoCodes(false); showPoItems();
-        pmsg("ອ່ານແລ້ວ ກວດຊື່ ແລະເລືອກລະຫັດດ້ານລຸ່ມ", "ok");
-      }).catch(function (e) { pmsg(poErr(e && e.code), "err"); })
-        .then(function () { btn.disabled = false; });
-    }
-    if (file) {
-      sampleFn.limits().then(function (l) { return l; }, function () { return null; }).then(function (l) {
-        if (!l || !l.images) { pmsg("ອ່ານຮູບບໍ່ໄດ້ໃນໜ້ານີ້ ລອງວາງຂໍ້ຄວາມແທນ", "err"); return; }
-        run({ modelTier: "default", images: file });
-      });
-    } else run({ modelTier: "default" });
-  };
-  $("poUse").onclick = function () {
-    var nm = $("poName").value.trim(), rec = codes.filter(function (r) { return r.id === $("poCode").value; })[0] || null;
-    if (!nm && !rec) { pmsg("ໃສ່ຊື່ໃນ PO ຫຼືເລືອກລະຫັດກ່ອນ", "err"); return; }
-    var data = poData; resetForm();
-    $("fName").value = (rec && rec.custName) || nm;
-    $("fPo").value = rec ? rec.code : (data.code || "");
-    if (data.address) $("fAddr").value = data.address;
-    if (data.items.length) { $("items").innerHTML = ""; data.items.forEach(function (i) { addRow(i.p, i.q, i.pr || null); }); }
-    var c = custOf($("fName").value); if (c) fillCust(c); else calc();
-    $("f").scrollIntoView({ behavior: "smooth", block: "start" });
-    pmsg("ໃສ່ໃນຟອມແລ້ວ ກວດຄວາມຖືກຕ້ອງ ແລ້ວກົດ “ບັນທຶກອໍເດີ”", "ok");
-  };
-
-  var NO_AI = window.AE_NO_AI || "ໜ້ານີ້ເຊື່ອມ Claude ບໍ່ໄດ້ ຕ້ອງເປີດຈາກລີ້ງ claude.ai/artifact (ບໍ່ແມ່ນໄຟລ໌ HTML ແຍກ) ດ້ວຍບັນຊີ Claude ທີ່ລັອກອິນແລ້ວ";
-  try {
-    Promise.resolve(window.claude && window.claude.use ? window.claude.use("sample") : null)
-      .then(function (s) { sampleFn = s || null; }).catch(function () {});
-  } catch (e) {}
   /* ---------- bulk import: codes / names / prices ---------- */
   function kimsg(t, c) { var m = $("impMsg"); m.textContent = t; m.className = "msg " + (c || ""); }
   function mapProd(s) {
