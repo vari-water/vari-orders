@@ -650,8 +650,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   function fillCust(c) {
     if (!$("fPhone").value) $("fPhone").value = c.phone || "";
     if (!$("fAddr").value) $("fAddr").value = c.address || "";
-    if (curType === "pack" && !$("fPo").value) $("fPo").value = c.po || "";
+    if (!$("fPo").value) $("fPo").value = c.po || codeByName(c.name) || "";
     fillPrices(c);
+  }
+  function codeByName(name) {
+    var n = nrm(name); if (!n) return "";
+    var tm = codeTypes(), r = codes.filter(function (x) {
+      if (nrm(x.custName || x.poName) !== n) return false;
+      if (x.type) return x.type === curType;
+      var t = tm[x.code]; return !t || !!t[curType];
+    })[0];
+    return r ? r.code : "";
   }
   function saveCust(doc) {
     if (!ccol || !doc.name) return;
@@ -689,7 +698,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
         "<li><b>ລວມ: " + fmt.format(d.q) + " " + U + "</b></li></ul></div>";
     }).join("") : '<div class="meta">ຍັງບໍ່ມີອໍເດີ</div>';
   }
-  $("fName").addEventListener("input", function () { var c = custOf($("fName").value); if (c) fillCust(c); });
+  function autoFillName() {
+    var v = $("fName").value, c = custOf(v);
+    if (c) fillCust(c);
+    else if (!$("fPo").value) { var k = codeByName(v); if (k) $("fPo").value = k; }
+  }
+  $("fName").addEventListener("input", autoFillName);
+  $("fName").addEventListener("change", autoFillName);
   $("items").addEventListener("change", function () { var c = custOf($("fName").value); if (c) fillPrices(c); });
 
   function render() {
