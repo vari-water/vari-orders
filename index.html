@@ -380,7 +380,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   <div class="stats" id="stats" aria-live="polite">
     <div class="stat"><b id="sCount">0</b><span>ອໍເດີທັງໝົດ</span></div>
     <div class="stat"><b id="sSum">0</b><span>ຍອດລວມ (ກີບ)</span></div>
-    <div class="stat"><b id="sUnpaid">0</b><span>ຍັງບໍ່ຈ່າຍ</span></div>
+    <div class="stat"><b id="sUnpaid">0</b><span>ຍັງບໍ່ຊຳລະ</span></div>
     <div class="stat"><b id="sOpen">0</b><span>ລໍຖ້າສົ່ງ</span></div>
     <div class="stat"><b id="sReady">0</b><span id="sReadyL">ພ້ອມສົ່ງ (ລັງ)</span></div>
     <div class="stat"><b id="sDebt">0</b><span>ຄ້າງຈ່າຍ (ກີບ)</span></div>
@@ -412,7 +412,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
       <div class="total"><span>ລວມ</span><span id="fTotal">0</span></div>
       <div class="row2" hidden>
         <label for="fPay">ການຈ່າຍເງິນ
-          <select id="fPay"><option value="unpaid">ຍັງບໍ່ຈ່າຍ</option><option value="cash">ເງິນສົດ</option><option value="transfer">ໂອນແລ້ວ</option></select>
+          <select id="fPay"><option value="unpaid">ຍັງບໍ່ຊຳລະ</option><option value="cash">ເງິນສົດ</option><option value="transfer">ໂອນແລ້ວ</option></select>
         </label>
         <label for="fStatus">ສະຖານະ
           <select id="fStatus"><option value="new">ໃໝ່</option><option value="go">ກຳລັງສົ່ງ</option><option value="done">ສົ່ງແລ້ວ</option><option value="cancel">ຍົກເລີກ</option></select>
@@ -448,7 +448,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
         <input id="q" type="search" placeholder="ຄົ້ນຫາຊື່ / ລະຫັດ / ເບີໂທ / ທີ່ຢູ່" aria-label="ຄົ້ນຫາ">
         <select id="fs" aria-label="ກັ່ນຕອງສະຖານະ">
           <option value="">ທຸກສະຖານະ</option><option value="short">⚠ ພ້ອມສົ່ງບໍ່ເຕັມ</option><option value="new">ໃໝ່</option><option value="go">ກຳລັງສົ່ງ</option>
-          <option value="done">ສົ່ງແລ້ວ</option><option value="cancel">ຍົກເລີກ</option><option value="unpaid">ຍັງບໍ່ຈ່າຍ</option>
+          <option value="done">ສົ່ງແລ້ວ</option><option value="cancel">ຍົກເລີກ</option><option value="unpaid">ຍັງບໍ່ຊຳລະ</option>
         </select>
       </div>
       <div class="notebox" id="pBoxWrap" hidden style="margin-bottom:12px">
@@ -491,7 +491,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var STATUS = { "new": "ໃໝ່", go: "ກຳລັງສົ່ງ", done: "ສົ່ງແລ້ວ", cancel: "ຍົກເລີກ" };
-  var PAY = { unpaid: "ຍັງບໍ່ຈ່າຍ", cash: "ຈ່າຍເງິນສົດ", transfer: "ໂອນແລ້ວ" };
+  var PAY = { unpaid: "ຍັງບໍ່ຊຳລະ", cash: "ຈ່າຍເງິນສົດ", transfer: "ໂອນແລ້ວ" };
   var fmt = new Intl.NumberFormat("en-US");
   var TYPES = {
     glass: { label: "ຂວດແກ້ວ", unit: "ລັງ", products: ["500ມລ", "300ມລ"] },
