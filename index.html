@@ -349,6 +349,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .po { font-family: var(--font-display); font-weight: 700; font-size: .8rem; letter-spacing: .04em; color: var(--accent); overflow-wrap: anywhere; }
 .bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.notebox[hidden], label[hidden] { display: none !important; }
 .shipedit { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; align-items: end; }
 .ro #f, .ro .order .acts, .ro .shipedit, .ro #renamePage, .ro #renameBox { display: none; }
 .ro .cols { grid-template-columns: minmax(0, 1fr); }
@@ -506,6 +507,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
   function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+  function addDays(iso, n) {
+    var d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n);
+    var m = d.getMonth() + 1, x = d.getDate();
+    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (x < 10 ? "0" : "") + x;
+  }
+  function dm(iso) { return String(iso || "").split("-").reverse().slice(0, 2).join("/"); }
   function say(t, cls) { var m = $("msg"); m.textContent = t; m.className = "msg " + (cls || ""); }
 
   /* ---------- form: item rows ---------- */
@@ -626,7 +633,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
       '<div class="shipedit"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;grid-column:1/-1">' + rows + "</div>" +
       '<label>ວັນທີຈັດສົ່ງ<input type="date" class="sd" value="' + esc(o.shipDate || "") + '"></label>' +
       '<label>ຊ່ວງເວລາ<select class="ss">' + slots + "</select></label>" +
-      '<button type="button" class="btn small" data-a="ship" data-id="' + o.id + '" data-t="' + T + '">ບັນທຶກ</button></div></div>';
+      '<button type="button" class="btn small" data-a="ship" data-id="' + o.id + '" data-t="' + T + '">ບັນທຶກ</button>' +
+      (o.status === "done" ? "" :
+        '<div style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:end;border-top:1px dashed var(--line);padding-top:8px">' +
+        '<label style="flex:1 1 160px">ຍົກຍອດຄ້າງໄປວັນທີ<input type="date" class="cd" value="' + addDays((o.orderDate || today()) > today() ? o.orderDate : today(), 1) + '"></label>' +
+        '<button type="button" class="btn small" data-a="carry" data-id="' + o.id + '">ຍົກຍອດຄ້າງ</button>' +
+        '<div class="meta" style="flex:1 1 100%;font-size:.8rem">ຈຳນວນທີ່ພ້ອມສົ່ງ ຢູ່ກັບອໍເດີເດີມ ສ່ວນທີ່ຍັງບໍ່ພ້ອມ ຈະແຍກເປັນອໍເດີໃໝ່ໃນວັນທີ່ເລືອກ.</div></div>') + "</div></div>";
   }
   /* ---------- saved customers ---------- */
   var ccol = null, customers = [];
@@ -749,7 +761,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
       return '<article class="order' + (miss ? " short" : "") + '">' +
         (miss ? '<div class="warnline">⚠ ກຳລັງສົ່ງ ແຕ່ພ້ອມສົ່ງບໍ່ເຕັມ · ຂາດ ' + fmt.format(miss) + " " + TYPES[typeOf(o)].unit + "</div>" : "") + (o.po ? '<div class="po">' + esc(o.po) + "</div>" : "") + '<div class="top"><span class="who">' + esc(o.name) + '</span><span class="meta">' + esc(o.orderDate) + "</span></div>" +
         '<div class="meta">' + [o.phone, o.address].filter(Boolean).map(esc).join(" · ") + "</div>" +
-        "<ul>" + items + "</ul>" + (o.vat ? '<div class="meta">ກ່ອນອາກອນ ' + fmt.format((o.total || 0) - (o.vatAmt || 0)) + " + ອາກອນ 10% " + fmt.format(o.vatAmt || 0) + " ກີບ</div>" : "") + shipBlock(o) + (o.note ? '<div class="meta">ໝາຍເຫດ: ' + esc(o.note) + "</div>" : "") +
+        "<ul>" + items + "</ul>" + (o.vat ? '<div class="meta">ກ່ອນອາກອນ ' + fmt.format((o.total || 0) - (o.vatAmt || 0)) + " + ອາກອນ 10% " + fmt.format(o.vatAmt || 0) + " ກີບ</div>" : "") +
+        (o.carriedFromDate ? '<div class="meta">↪ ຍົກຍອດຄ້າງມາຈາກວັນທີ ' + dm(o.carriedFromDate) + "</div>" : "") +
+        (o.carriedToDate ? '<div class="meta">↪ ຍອດຄ້າງຖືກຍົກໄປວັນທີ ' + dm(o.carriedToDate) + "</div>" : "") +
+        (o.movedFromDate ? '<div class="meta">↪ ຍ້າຍມາຈາກວັນທີ ' + dm(o.movedFromDate) + "</div>" : "") +
+        shipBlock(o) + (o.note ? '<div class="meta">ໝາຍເຫດ: ' + esc(o.note) + "</div>" : "") +
         '<div class="foot"><div class="pills"><span class="pill p-' + esc(o.status) + '">' + esc(STATUS[o.status] || o.status) +
         '</span><span class="pill ' + (o.pay === "unpaid" ? "p-unpaid" : "p-paid") + '">' + esc(PAY[o.pay] || o.pay) +
         '</span></div><span class="sum">' + fmt.format(o.total || 0) + ' ກີບ</span></div><div class="acts">' + acts + "</div></article>";
@@ -780,6 +796,46 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
     }
     if (a === "pmsg") {
       var po = orders.filter(function (x) { return x.id === id; })[0]; if (po) showPack(po);
+      return;
+    }
+    if (a === "carry") {
+      var cb = b.closest(".ship"), cd = cb.querySelector(".cd").value, co = orders.filter(function (x) { return x.id === id; })[0];
+      if (!co) return;
+      if (!cd) { lsay("ເລືອກວັນທີທີ່ຈະຍົກຍອດຄ້າງໄປ", "err"); return; }
+      if (cd <= (co.orderDate || "")) { lsay("ວັນທີທີ່ຍົກໄປ ຕ້ອງຫຼັງຈາກວັນທີອໍເດີ (" + dm(co.orderDate) + ")", "err"); return; }
+      var crd = [], cbad = false;
+      Array.prototype.forEach.call(cb.querySelectorAll(".rq"), function (x) {
+        var v = Number(x.value) || 0; if (v < 0 || v > Number(x.dataset.max)) cbad = true; crd.push(v);
+      });
+      if (cbad) { lsay("ຈຳນວນພ້ອມສົ່ງຕ້ອງບໍ່ເກີນຈຳນວນທີ່ສັ່ງຂອງແຕ່ລະຂະໜາດ", "err"); return; }
+      var shipped = [], rest = [];
+      (co.items || []).forEach(function (i, n) {
+        var q = Number(i.q) || 0, r = crd[n] || 0;
+        if (r > 0) shipped.push({ p: i.p, q: r, pr: i.pr });
+        if (q - r > 0) rest.push({ p: i.p, q: q - r, pr: i.pr });
+      });
+      if (!rest.length) { lsay("ບໍ່ມີຍອດຄ້າງ ພ້ອມສົ່ງຄົບແລ້ວ", "err"); return; }
+      var sums2 = function (items) {
+        var sub = items.reduce(function (s, i) { return s + i.q * (Number(i.pr) || 0); }, 0), vat = co.vat ? Math.round(sub * 0.1) : 0;
+        return { total: sub + vat, vat: vat };
+      };
+      var cfail = function (err) { lsay("ຍົກຍອດຄ້າງບໍ່ສຳເລັດ: " + (err && err.message || "ບໍ່ມີສິດຂຽນຂໍ້ມູນ"), "err"); };
+      if (!shipped.length) {
+        col.doc(id).update({ orderDate: cd, movedFromDate: co.orderDate || "", status: "new", shipDate: "", shipSlot: "", rd: [], ready: 0 })
+          .then(function () { lsay("ຍ້າຍອໍເດີທັງໝົດໄປວັນທີ " + dm(cd) + " ແລ້ວ", "ok"); }).catch(cfail);
+        return;
+      }
+      var tn = sums2(rest), ts = sums2(shipped);
+      col.add({
+        createdAt: new Date().toISOString(), orderDate: cd, name: co.name, phone: co.phone || "", address: co.address || "", items: rest,
+        total: tn.total, vat: !!co.vat, vatAmt: tn.vat, pay: co.pay || "unpaid", status: "new", note: co.note || "", type: typeOf(co), po: co.po || "",
+        carriedFromDate: co.orderDate || "", carriedFromId: id
+      }).then(function () {
+        return col.doc(id).update({
+          items: shipped, total: ts.total, vatAmt: ts.vat, rd: shipped.map(function (i) { return i.q; }),
+          ready: shipped.reduce(function (s, i) { return s + i.q; }, 0), carriedToDate: cd
+        });
+      }).then(function () { lsay("ຍົກຍອດຄ້າງໄປວັນທີ " + dm(cd) + " ແລ້ວ (ແຍກເປັນອໍເດີໃໝ່)", "ok"); }).catch(cfail);
       return;
     }
     if (a === "ship") {
@@ -817,7 +873,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
     var lines = [settings.noteTitle,"ອໍເດີວັນທີ" + p[2] + "/" + p[1] + "/" + p[0]];
     if (!day.length) { out.value = lines.join("\n") + "\n\n(ຍັງບໍ່ມີອໍເດີຂອງວັນນີ້)"; return; }
     day.forEach(function (o, n) {
-      lines.push((n + 1) + " ) " + o.name + (o.note ? " " + o.note : ""));
+      lines.push((n + 1) + " ) " + o.name + (o.note ? " " + o.note : "") + (o.carriedFromDate ? " (ຄ້າງຈາກ " + dm(o.carriedFromDate) + ")" : "") + (o.movedFromDate ? " (ຍ້າຍມາຈາກ " + dm(o.movedFromDate) + ")" : ""));
       (o.items || []).forEach(function (i) {
         lines.push(i.p + ":" + i.q + "ລັງ ລາຄາ:" + fmt.format(i.pr || 0) + "ກີບ");
       });
