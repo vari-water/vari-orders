@@ -957,7 +957,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
       L.push("ອາກອນ 10%:" + fmt.format(o.vatAmt || 0) + "ກີບ");
       L.push("ລວມທັງໝົດ:" + fmt.format(o.total || 0) + "ກີບ");
     }
-    L.push("ສະຖານະ:" + (o.pay === "unpaid" ? "ຍັງບໍ່ຈ່າຍລະ ❌" : "ຈ່າຍແລ້ວ ✅"));
+    L.push("ສະຖານະ:" + (o.pay === "unpaid" ? "ຍັງບໍ່ຊຳລະ ❌" : "ຊຳລະແລ້ວ ✅"));
     if (o.note) L.push(o.note);
     return L.join("\n");
   }
