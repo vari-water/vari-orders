@@ -54,9 +54,22 @@
     else if (op.op === "set") c[op.id] = clone(op.data);
     else delete c[op.id];
     notify(); pending++;
-    var p = queue.then(function () { return gs("api_write", PIN, [op]); });
+    return new Promise(function (res, rej) {
+      buf.push({ op: op, res: res, rej: rej });
+      if (!timer) timer = setTimeout(flush, 120);
+    });
+  }
+  /* writes made close together go to the server in one call (up to 50) */
+  var buf = [], timer = null;
+  function flush() {
+    timer = null; var b = buf; buf = [];
+    for (var i = 0; i < b.length; i += 50) send(b.slice(i, i + 50));
+  }
+  function send(chunk) {
+    var p = queue.then(function () { return gs("api_write", PIN, chunk.map(function (x) { return x.op; })); });
     queue = p.then(function () {}, function () {});
-    return p.then(function () { pending--; }, function (e) { pending--; ver = ""; sync(true); throw { message: msg(e) }; });
+    p.then(function () { pending -= chunk.length; chunk.forEach(function (x) { x.res(); }); },
+      function (e) { pending -= chunk.length; ver = ""; sync(true); chunk.forEach(function (x) { x.rej({ message: msg(e) }); }); });
   }
 
   function colRef(name) {
@@ -399,6 +412,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
       <div class="msg" id="kMsg" role="status"></div>
       <input id="kQ" type="search" placeholder="ຄົ້ນຫາລະຫັດ / ຊື່" aria-label="ຄົ້ນຫາລະຫັດ">
       <div id="codeList"></div>
+      <details id="impBox" style="border-top:1px dashed var(--line);padding-top:10px">
+        <summary style="cursor:pointer;font-weight:700">ນຳເຂົ້າຂໍ້ມູນຫຼາຍແຖວ (ວາງຈາກ Excel)</summary>
+        <div style="color:var(--muted);font-size:.85rem;margin:6px 0">ຄັດລອກຫຼາຍແຖວຈາກ Excel ແລ້ວວາງ. ຄໍລຳຕາມລຳດັບ: <b>ລະຫັດລູກຄ້າ | ຊື່ລູກຄ້າ | ສິນຄ້າ | ລາຄາ</b> (ສິນຄ້າ ແລະລາຄາບໍ່ບັງຄັບ; ລູກຄ້າຄົນດຽວມີຫຼາຍແຖວໄດ້ ແຖວລະສິນຄ້າ). ນຳເຂົ້າໃສ່ແຖບ: <b id="impTab"></b>. ເວັບຈະຈື່ ລະຫັດ ຊື່ ແລະລາຄາ ແລະຕື່ມໃຫ້ອັດຕະໂນມັດຕອນພິມຊື່ລູກຄ້າ.</div>
+        <textarea id="impText" rows="6" placeholder="V03RET005-6865-0926&#9;ຮ້ານ ABC&#9;250ມລ&#9;35000"></textarea>
+        <input id="impFile" type="file" accept=".csv,.tsv,.txt" style="margin-top:6px">
+        <div class="foot" style="margin-top:6px"><span class="msg" id="impMsg" role="status"></span><button type="button" class="btn primary" id="impGo">ນຳເຂົ້າ</button></div>
+      </details>
       <datalist id="codeDl"></datalist>
     </details>
   </section>
@@ -914,7 +934,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
       var on = b.dataset.t === curType; b.setAttribute("aria-selected", on ? "true" : "false");
     });
-    $("poRow").hidden = false; $("vatRow").hidden = curType !== "pack"; $("poWrap").hidden = false; $("daySum").hidden = false; calc();
+    $("poRow").hidden = false; $("vatRow").hidden = curType !== "pack"; $("poWrap").hidden = false; $("daySum").hidden = false; $("impTab").textContent = T().label; calc();
     $("noteBox").hidden = curType !== "glass";
     $("pBoxWrap").hidden = true;
     setEdit(editId);
@@ -1101,6 +1121,67 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
     Promise.resolve(window.claude && window.claude.use ? window.claude.use("sample") : null)
       .then(function (s) { sampleFn = s || null; }).catch(function () {});
   } catch (e) {}
+  /* ---------- bulk import: codes / names / prices ---------- */
+  function kimsg(t, c) { var m = $("impMsg"); m.textContent = t; m.className = "msg " + (c || ""); }
+  function mapProd(s) {
+    var PR = T().products; if (PR.indexOf(s) >= 0) return s;
+    var t = s.toLowerCase().replace(/\s/g, ""), d = t.replace(/\D/g, "");
+    if (/^2(l|ລິດ)/.test(t)) d = "2000";
+    for (var i = 0; i < PR.length; i++) if (d && PR[i].replace(/\D/g, "") === d) return PR[i];
+    return s;
+  }
+  function parseImport(text) {
+    var rows = [], bad = 0;
+    text.split(/\r?\n/).forEach(function (line) {
+      if (!line.trim()) return;
+      var c = (line.indexOf("\t") >= 0 ? line.split("\t") : line.split(",")).map(function (s) { return s.trim().replace(/^"|"$/g, ""); });
+      var pr = c[3] == null || c[3] === "" ? 0 : Number(String(c[3]).replace(/[,\s]/g, ""));
+      if (!c[1] || isNaN(pr)) { bad++; return; }
+      rows.push({ code: c[0] || "", name: c[1], prod: c[2] || "", pr: pr });
+    });
+    return { rows: rows, bad: bad };
+  }
+  $("impFile").addEventListener("change", function () {
+    var f = $("impFile").files[0]; if (!f) return;
+    var r = new FileReader(); r.onload = function () { $("impText").value = String(r.result || ""); }; r.readAsText(f, "UTF-8");
+  });
+  $("impGo").onclick = function () {
+    if (!kcol || !ccol) { kimsg("ຍັງເຊື່ອມຖານຂໍ້ມູນບໍ່ໄດ້ ກະລຸນາເປີດໜ້ານີ້ໃໝ່", "err"); return; }
+    var p = parseImport($("impText").value);
+    if (!p.rows.length) { kimsg("ບໍ່ພົບແຖວທີ່ໃຊ້ໄດ້ (ຕ້ອງມີຢ່າງໜ້ອຍ ຊື່ລູກຄ້າ)", "err"); return; }
+    var ops = [], nCode = 0, nPrice = 0, seen = {}, byName = {}, now = new Date().toISOString();
+    p.rows.forEach(function (r) {
+      if (r.code) {
+        var k = nrm(r.code) + "|" + nrm(r.name);
+        if (!seen[k] && !dupCode(r.code, r.name, null)) {
+          seen[k] = 1; nCode++;
+          ops.push(kcol.add({ code: r.code, poName: r.name, custName: r.name, createdAt: now }));
+        }
+      }
+      var o = byName[nrm(r.name)] = byName[nrm(r.name)] || { name: r.name, code: "", prices: [] };
+      if (r.code && !o.code) o.code = r.code;
+      if (r.prod && r.pr > 0) {
+        var pn = mapProd(r.prod), f = o.prices.filter(function (x) { return x.p === pn; })[0];
+        if (f) f.pr = r.pr; else o.prices.push({ p: pn, pr: r.pr });
+      }
+    });
+    Object.keys(byName).forEach(function (k) {
+      var o = byName[k]; if (!o.prices.length && !o.code) return;
+      var id = ckey(curType, o.name), old = customers.filter(function (c) { return c.id === id; })[0] || {}, pr = (old.prices || []).slice();
+      o.prices.forEach(function (x) {
+        var j = -1; pr.forEach(function (y, n) { if (y.p === x.p) j = n; });
+        if (j >= 0) pr[j] = x; else pr.push(x); nPrice++;
+      });
+      ops.push(ccol.doc(id).set({ name: o.name, type: curType, phone: old.phone || "", address: old.address || "", po: o.code || old.po || "", prices: pr, updatedAt: now }));
+    });
+    $("impGo").disabled = true; kimsg("ກຳລັງບັນທຶກ…", "");
+    Promise.all(ops).then(function () {
+      kimsg("ນຳເຂົ້າແລ້ວ: ລະຫັດໃໝ່ " + nCode + " · ລາຄາ " + nPrice + (p.bad ? " · ຂ້າມ " + p.bad + " ແຖວທີ່ໃຊ້ບໍ່ໄດ້" : ""), "ok");
+      $("impText").value = ""; $("impFile").value = "";
+    }).catch(function (err) { kimsg("ບັນທຶກບໍ່ສຳເລັດ: " + (err && err.message || "ບໍ່ມີສິດຂຽນຂໍ້ມູນ"), "err"); })
+      .then(function () { $("impGo").disabled = false; });
+  };
+
   $("q").addEventListener("input", render);
   $("fs").addEventListener("change", render);
 
